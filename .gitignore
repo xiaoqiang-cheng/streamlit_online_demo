@@ -1,2 +1,6 @@
 __pycache__/
+bbox_compare_results/
 tmp/
+merge_case
+*.pkl
+history

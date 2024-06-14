@@ -8,9 +8,38 @@ import json
 import os, sys
 import time
 
+import pickle
+
+global_compare_items_var = None
+
+def serialize_data(data:dict, file_path):
+    try:
+        with open(file_path, 'wb') as file:
+            pickle.dump(data, file)
+    except Exception as e:
+        print("序列化数据时出现错误:", e)
+
+def deserialize_data(file_path):
+    try:
+        with open(file_path, 'rb') as file:
+            data = pickle.load(file)
+        return data
+    except Exception as e:
+        print("反序列化数据时出现错误:", e)
+        return None
+
+
 if not os.path.exists("tmp"):
     os.makedirs("tmp")
 
+
+def get_datatime_tail():
+    from datetime import datetime
+    # 获取当前时刻
+    current_time = datetime.now()
+    # 将时间对象格式化为字符串，精确到分
+    formatted_time = current_time.strftime("%Y-%m-%d %H:%M")
+    return formatted_time
 
 class redirect:
     content = ""
@@ -51,13 +80,18 @@ def cocogt_to_cocodet(gtfile, detfile):
 def yolotxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile, ImageHeight = 720, ImageWidth = 1280):
     det_txt_list = [x for x in os.listdir(uiseefloder) if x.endswith(".txt")]
     ret_list = []
+    import ipdb
+    ipdb.set_trace()
     for x in coco_gt_images_dict["images"]:
-        except_txt_name = x["file_name"][0:17] + ".txt"
+        except_txt_name = x["file_name"][0:-4] + ".txt"
+        # import ipdb
+        # ipdb.set_trace()
         if except_txt_name in det_txt_list:
             txt_path = os.path.join(uiseefloder, except_txt_name)
             # txt: cls xmin, ymin, w, h score id ...
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
+                print(txt_path)
                 txt_ret = np.loadtxt(txt_path, dtype=np.float32)
             if len(txt_ret.shape) == 1 and txt_ret.shape[0] != 0:
                 txt_ret = [txt_ret.tolist()]
@@ -69,7 +103,7 @@ def yolotxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile, ImageHeight = 
                     image_result["category_id"] = 4
                 else:
                     image_result["category_id"] = int(num[0])
-                image_result["score"] = num[5]
+                image_result["score"] = 1
                 image_result['file_name'] = x["file_name"]
                 image_result["image_id"] = x["id"]
 
@@ -88,7 +122,7 @@ def yolotxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile, ImageHeight = 
                 ret_list.append(image_result)
     write_json(ret_list, outfile)
 
-def uiseetxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile):
+def uiseetxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile, score_thres = 0.0):
     det_txt_list = [x for x in os.listdir(uiseefloder) if x.endswith(".txt")]
     ret_list = []
     for x in coco_gt_images_dict["images"]:
@@ -105,12 +139,16 @@ def uiseetxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile):
             else:
                 txt_ret = txt_ret.tolist()
             for num in txt_ret:
+
                 image_result = {}
                 image_result["category_id"] = int(num[0])
                 image_result["score"] = num[5]
                 image_result['file_name'] = x["file_name"]
                 image_result["image_id"] = x["id"]
                 image_result["bbox"] = num[1:5]
+
+                if image_result["score"] < score_thres: continue
+
                 # cx = num[1] * 1280
                 # cy = num[2] * 720
                 # box_w = num[3] * 1280
@@ -292,12 +330,71 @@ def uiseegt_to_cocogt(uisee_anno, out_coco_anno, PRE_DEFINE_CATEGORIESl:dict):
     write_json(json_dict, out_coco_anno)
 
 
+# def simplify_cocogt(coco_anno):
+#     # PRE_DEFINE_CATEGORIESl:{
+#     #     "red":1,....
+#     # }
+#     START_BOUNDING_BOX_ID = 1
+#     UISEE_IMAGE_HEIGHT = 720
+#     UISEE_IMAGE_WIDTH = 1280
+#     coco_anno_dict = parse_json(coco_anno)
+#     json_dict = {"images": [], "annotations": [], "categories": []}
+#     bnd_id = START_BOUNDING_BOX_ID
+#     import ipdb
+#     ipdb.set_trace()
 
+#     image_nums = len(coco_anno_dict['images'])
+
+#     for i in range(image_nums):
+#         image_anno = coco_anno_dict['images'][i]
+#         filename = image_anno['file_obj'].split('/')[-1]
+#         image = {
+#                     "file_name": filename,
+#                     "height": UISEE_IMAGE_HEIGHT,
+#                     "width": UISEE_IMAGE_WIDTH,
+#                     "id": image_anno['id'],
+#         }
+
+#     for image_anno in coco_anno_dict:
+#         filename = image_anno['file_obj'].split('/')[-1]
+#         image = {
+#                     "file_name": filename,
+#                     "height": UISEE_IMAGE_HEIGHT,
+#                     "width": UISEE_IMAGE_WIDTH,
+#                     "id": image_anno['id'],
+#         }
+
+#         bbox_anno = json_dict['annotations'][i]
+#         json_dict['images'].append(image)
+#         for bbox_anno in image_anno['result']:
+#             bbox = {
+#                 "segmentation" : [],
+#                 "area" : bbox_anno["data"][2] * bbox_anno["data"][3],
+#                 "iscrowd" : 0,
+#                 "image_id" : image_anno['id'],
+#                 "id" : bnd_id,
+#                 "category_id": PRE_DEFINE_CATEGORIESl[bbox_anno['tagtype']],
+#                 "bbox": bbox_anno["data"][3],
+#                 "ignore": 0
+#             }
+#             json_dict['annotations'].append(bbox)
+#             bnd_id += 1
+#     for key, result in PRE_DEFINE_CATEGORIESl.items():
+#         cat_item = {
+#             "supercategory" : "light",
+#             "id" : result,
+#             "name" : key
+#         }
+#         json_dict["categories"].append(cat_item)
+#     write_json(json_dict, out_coco_anno)
 
 if __name__ == "__main__":
     # cocogt_to_cocodet("data/test_data.json")
-    obj_gt_path = "/home/uisee/Develop/lab_code/traffic_light_regression/traffic_light_case/case_02_00_0000/ground_truth.json"
-    coco_gt_images_dict = parse_json(obj_gt_path)
-    uiseefloder = "/home/uisee/Develop/lab_code/traffic_light_regression/traffic_light_case/case_02_00_0000/imgs"
-    outfile = "/home/uisee/Develop/lab_code/traffic_light_regression/traffic_light_case/case_02_00_0000/result/2022-07-05-17-07-16.json"
-    uiseetxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile)
+    # obj_gt_path = "/home/uisee/dolly_test/ground_truth.json"
+    # coco_gt_images_dict = parse_json(obj_gt_path)
+    # uiseefloder = "/home/uisee/Downloads/chy_results"
+    # outfile = "./2022-07-05-17-07-16.json"
+    # uiseetxt_to_cocodet(uiseefloder, coco_gt_images_dict, outfile)
+    # simplify_cocogt("/home/uisee/COCODetection/annotations/instances_train2017.json")
+    gt_dict = parse_json('/home/uisee/MainDisk/DollyMonitor/train_check/dataset_0028/ground_truth.json')
+    yolotxt_to_cocodet("/home/uisee/MainDisk/DollyMonitor/train_check/dataset_0028/labels", gt_dict, "ground_truth.json")
