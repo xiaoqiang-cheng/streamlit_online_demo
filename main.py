@@ -135,10 +135,10 @@ def evaluate(det_dir, gt_dir, score_thres, commit_time, commit_title, database_d
         "漏检帧数"        : [bbox_metric_ret['false_negatives']],
         "新增误检"      : [0],
         "新增漏检"      : [0],
-        "公共误检"      : [0],
-        "公共漏检"      : [0],
         "消除误检"      : [0],
         "消除漏检"      : [0],
+        "公共误检"      : [0],
+        "公共漏检"      : [0],
     }
 
     if os.path.exists("bbox_compare_results/0.pkl"):
@@ -179,26 +179,6 @@ def main_ui_layout(slidebar_status):
 
     st.markdown("### 当前评估结果")
     first_col, second_col = st.columns([1,4], gap="small")
-    eval_df = {
-        "record"        : [],
-        "commit"        : [],
-        "time"          : [],
-        "score_thres"   : [],
-        "mAP@0.5"       : [],
-        "recall@0.5"    : [],
-        "mAP@large"    : [],
-        "mAP@small"    : [],
-        "recall@large" : [],
-        "recall@small" : [],
-        "误检框数"        : [],
-        "漏检框数"        : [],
-        "新增误检"      : [],
-        "新增漏检"      : [],
-        "公共误检"      : [],
-        "公共漏检"      : [],
-        "消除误检"      : [],
-        "消除漏检"      : [],
-    }
 
     if slidebar_status is not None:
         det_dir, gt_dir, score_thres, commit_title = slidebar_status
@@ -294,9 +274,10 @@ def main_ui_layout(slidebar_status):
                     utils.global_compare_items_var[i] = st.session_state.global_metric_database['commit'][i]
             if st.button("compare"):
                 print(  utils.global_compare_items_var, "====main=====" )
-                st.markdown("[%s](http://%s)"%("compare",
-                    ("10.11.1.91" + ":9090/可视化")),
-                                unsafe_allow_html=True)
+                st.switch_page("pages/可视化.py")
+                # st.markdown("[%s](http://%s)"%("compare",
+                #     ("10.11.1.91" + ":9090/可视化")),
+                #                 unsafe_allow_html=True)
 
 
 def main():

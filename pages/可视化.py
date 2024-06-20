@@ -6,6 +6,7 @@ import  utils
 from utils import deserialize_data
 import cv2
 import copy
+import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide",
             page_title="Dolly View",
@@ -14,7 +15,6 @@ st.set_page_config(layout="wide",
 
 if "load_database_from_disk" not in st.session_state.keys():
     st.session_state.load_database_from_disk = {}
-
 
 if "slider_index" not in st.session_state:
     st.session_state.slider_index = 0
@@ -53,6 +53,36 @@ def draw_detect_box(img, bboxes,info="error"):
     return img
 
 
+def draw_conf_histogram(detection_results, info = "正检"):
+    # 提取所有置信度分数
+    all_scores = []
+    for detections in detection_results.values():
+        all_scores.extend([detection[4] for detection in detections])
+
+    # 将所有置信度分数转换为 NumPy 数组
+    scores_array = np.array(all_scores)
+
+    # 定义置信度区间
+    bins = np.arange(0, 1.1, 0.1)
+
+    # # 计算每个区间的框数
+    counts, _ = np.histogram(scores_array, bins=bins)
+
+    # 准备区间标签
+    interval_labels = [f"{bins[i]:.1f}-{bins[i+1]:.1f}" for i in range(len(bins)-1)]
+
+    fig, ax = plt.subplots()
+    ax.bar(interval_labels, counts, width=0.8, align='center')
+    ax.set_xlabel('Score Intervals')
+    ax.set_ylabel('Number of Boxes')
+    ax.set_title('Histogram of %s'%info)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    # st.pyplot(fig)
+    return fig
+
+
+
 def show_image():
 
     image_fname = st.session_state.compare_dataframe['image'][st.session_state.slider_index]
@@ -81,10 +111,25 @@ def show_image():
             show_img = draw_detect_box(show_img, fn_box, "miss")
 
         with gl:
-            st.markdown("##### %s"%curr_commit)
+            st.markdown("#### %s"%curr_commit)
             show_img = cv2.cvtColor(show_img, cv2.COLOR_BGR2RGB)
             st.image(show_img)
             st.markdown("-"*1000)
+
+            if "first_show_image" not in st.session_state.keys():
+                st.markdown("##### 误检样本")
+                fp_key = curr_commit + "false_positives"
+
+                if fp_key not in st.session_state.keys():
+                    st.session_state[fp_key] = draw_conf_histogram(st.session_state.load_database_from_disk[curr_commit]['false_positives_database'], "FP")
+                st.pyplot(st.session_state[fp_key] )
+
+                st.markdown("##### 正检样本")
+                tp_key = curr_commit + "true_positives"
+                if tp_key not in st.session_state.keys():
+                    st.session_state[tp_key] = draw_conf_histogram(st.session_state.load_database_from_disk[curr_commit]['true_positives_database'], "TP")
+                st.pyplot(st.session_state[tp_key])
+    st.session_state.first_show_image = False
 
 def main():
     if utils.global_compare_items_var is None:

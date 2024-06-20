@@ -85,6 +85,7 @@ def find_false_positives_and_negatives(predicted_boxes, ground_truth_boxes, iou_
     """找出误检和漏检目标"""
     false_positives = []
     false_negatives = []
+    true_positives = []
     matched_gt_indices = set()
 
     for pred_box in predicted_boxes:
@@ -97,6 +98,7 @@ def find_false_positives_and_negatives(predicted_boxes, ground_truth_boxes, iou_
                 best_gt_index = gt_index
         if best_iou >= iou_threshold:
             matched_gt_indices.add(best_gt_index)
+            true_positives.append(pred_box)
         else:
             false_positives.append(pred_box)
 
@@ -104,7 +106,7 @@ def find_false_positives_and_negatives(predicted_boxes, ground_truth_boxes, iou_
         if gt_index not in matched_gt_indices:
             false_negatives.append(gt_box)
 
-    return false_positives, false_negatives
+    return false_positives, false_negatives, true_positives
 
 
 def draw_detect_box(img, bboxes, info="error"):
@@ -181,6 +183,10 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
 
         "false_negatives_database" : {
 
+        },
+
+        "true_positives_database" : {
+
         }
     }
 
@@ -196,12 +202,14 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
         else:
             false_positives_tmp = []
             false_negatives_tmp = []
+            ture_positives_tmp = []
+
             if img_key not in gt_dict.keys():
                 false_positives_tmp = det_dict[img_key]
             elif img_key not in det_dict.keys():
                 false_negatives_tmp = gt_dict[img_key]
             else:
-                false_positives_tmp, false_negatives_tmp = find_false_positives_and_negatives(det_dict[img_key], gt_dict[img_key])
+                false_positives_tmp, false_negatives_tmp, ture_positives_tmp = find_false_positives_and_negatives(det_dict[img_key], gt_dict[img_key])
 
             false_positives = []
             false_negatives = []
@@ -217,7 +225,9 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
 
             if len(false_negatives) == 0 and len(false_positives) == 0:
                 results['normal'] += 1
-                continue
+
+            if len(ture_positives_tmp) != 0:
+                results['true_positives_database'][img_fname] = ture_positives_tmp
 
             if len(false_positives) != 0:
                 results['false_positives'] += 1
