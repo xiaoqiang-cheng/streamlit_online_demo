@@ -24,8 +24,8 @@ def draw_detect_box(img, bboxes,info="error"):
     color = {
         "error": (0, 0, 255),
         "miss" : (0, 255, 255),
-        "gt" : (0, 255, 0),
-        "det": (255, 0, 0)
+        "gt" : (255, 0, 0),
+        "det": (0, 255, 0)
     }
 
     scale = {
@@ -109,6 +109,10 @@ def show_image():
         if image_fname in st.session_state.load_database_from_disk[curr_commit]['false_negatives_database'].keys():
             fn_box = st.session_state.load_database_from_disk[curr_commit]['false_negatives_database'][image_fname]
             show_img = draw_detect_box(show_img, fn_box, "miss")
+
+        if image_fname in st.session_state.load_database_from_disk[curr_commit]['true_positives_database'].keys():
+            tp_box = st.session_state.load_database_from_disk[curr_commit]['true_positives_database'][image_fname]
+            show_img = draw_detect_box(show_img, tp_box, "det")
 
         with gl:
             st.markdown("#### %s"%curr_commit)
