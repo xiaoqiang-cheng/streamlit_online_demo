@@ -161,7 +161,7 @@ def save_vis(img_fname, img, false_posi, fasle_navi):
 
 
 def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
-                        images_dir = "./merge_case", area_thres=1250):
+                        images_dir = "./merge_case", area_thres=0):
 
     # 获取
     gt_dict = get_bboxes_from_file(ground_truth_dir, score_thres=score_thres)
@@ -213,6 +213,7 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
 
             false_positives = []
             false_negatives = []
+            need_save = False
             # import ipdb
             # ipdb.set_trace()
             for fp in false_positives_tmp:
@@ -220,9 +221,13 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
                     false_positives.append(fp)
 
             for fn in false_negatives_tmp:
-                if compute_area(fn) > area_thres:
-                    false_negatives.append(fn)
+                # if compute_area(fn) > area_thres:
+                false_negatives.append(fn)
 
+                if  compute_area(fn) < 100:
+                    print("fuck!!!!!!")
+                    print(fn)
+                    need_save = True
             if len(false_negatives) == 0 and len(false_positives) == 0:
                 results['normal'] += 1
 
@@ -240,22 +245,24 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
                 results['false_negatives'] += 1
                 results["false_negatives_database"][img_fname] = false_negatives
 
-            if False:
+            if need_save:
                 img_fpath = os.path.join(images_dir, img_fname)
                 cvimg = cv2.imread(img_fpath)
 
                 if img_key in det_dict.keys():
                     cvimg = draw_detect_box(cvimg, det_dict[img_key], info="det")
 
-                if img_key in gt_dict.keys():
-                    cvimg = draw_detect_box(cvimg, gt_dict[img_key], info="gt")
+                # if img_key in gt_dict.keys():
+                #     cvimg = draw_detect_box(cvimg, gt_dict[img_key], info="gt")
 
                 cvimg = draw_detect_box(cvimg, false_positives, info="error")
                 cvimg = draw_detect_box(cvimg, false_negatives, info="miss")
-                save_vis(img_fname, cvimg, false_positives, false_negatives)
 
-                # cv2.imshow("test", cvimg)
-                # cv2.waitKey()
+                save_vis(img_fname, cvimg, false_positives, false_negatives)
+                print("?????")
+                print(false_negatives)
+                cv2.imshow("test", cvimg)
+                cv2.waitKey()
     return results
     # sample_num = len(sort_image_dir)
 
@@ -280,5 +287,7 @@ def evaluate_det_bbox_error(detection_dir, ground_truth_dir, score_thres = 0.5,
 
 
 if __name__=="__main__":
-    ret = evaluate_det_bbox_error("history/baseline-2024-06-13_18-38", "merge_case/ground_truth_merge.json", images_dir="merge_case/imgs")
+    # ret = evaluate_det_bbox_error("history/yolo1280scratchmixe300-2024-06-20_13-26", "merge_case/ground_truth_merge.json", images_dir="merge_case/imgs")
+    ret = evaluate_det_bbox_error("history/baseline-2024-06-20_13-25", "merge_case/ground_truth_merge.json", images_dir="merge_case/imgs")
+
     print(ret['false_positives'])

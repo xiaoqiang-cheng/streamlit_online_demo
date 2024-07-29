@@ -3,6 +3,12 @@ from pycocotools.cocoeval import COCOeval
 from utils import *
 import matplotlib.pyplot as plt
 
+def parse_json(filename):
+    with open(filename, 'r', encoding="utf-8", errors='ignore') as f:
+        content = ''.join(f.readlines())
+    return json.loads(content)
+
+
 def eval_mAP_by_coco(det_file, gt_file, catid = None):
 
 
@@ -62,4 +68,4 @@ if __name__=="__main__":
     import sys
     det_dir = sys.argv[1]
     eval_mAP_for_uisee(det_dir,
-                "tmp/ground_truth.json")
+                sys.argv[2])
